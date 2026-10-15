@@ -44,7 +44,7 @@ Keep writing normal Obsidian tasks — they stay 100% visible to Tasks, Dataview
 - [ ] backup data
 ```
 
-`buy milk`, `wash dishes` and `weekly report` render as one row; `backup data` (no trailing `/`) stays on its own line. Plain text lines between tasks are absorbed into the row; blank lines, headings, quotes, code blocks and other list items break the chain.
+`buy milk`, `wash dishes`, `weekly report`, `backup data` and the surrounding plain-text lines all render as **one row**: a run of consecutive non-blank lines is displayed inline as soon as it contains a task line ending with `/`. To split it back into normal lines, insert a blank line. Headings, quotes, code blocks, indented sub-items and other list items also break the run.
 
 ## Install
 
@@ -116,7 +116,7 @@ dv.table(['note', 'open', 'done'], rows.map(r => [r.note, r.open, r.done]));
 - [ ] 备份数据
 ```
 
-`买菜`、`洗碗`、`写周报` 横排一行；`备份数据`（行尾没有 `/`）保持竖排。任务之间夹的普通文字行也会被吸进横排；空行、标题、引用、代码块、其他列表会断开横排链。
+`买菜`、`洗碗`、`写周报`、`备份数据` 以及夹在中间的文字行全部**横排一行**：连续非空行组成的块中，只要有任务行以 `/` 结尾，整块横排显示。**想断开就插入一个空行**。标题、引用、代码块、缩进子项、其他列表项也会断开横排。
 
 ### 行为说明
 

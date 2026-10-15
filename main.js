@@ -1,12 +1,12 @@
 /* ============================================================
-   行内待办 Inline Todo  v0.4.0
+   行内待办 Inline Todo  v0.4.1
    语法一（正文随手待办）：[]内容/ 未完成，[x]内容/ 已完成
-   语法二（标准任务横排）：- [ ] 内容/ 行尾斜杠 = 与下一行拼一行
-   - 行尾 / 渲染时隐藏；内容里的字面斜杠写作 \/
-   - 标准任务横排：链内普通文字行被吸收，无斜杠任务行结束链，
-     空行/标题/引用/代码块/其他列表断链
+   语法二（标准任务横排）：连续非空行块中任意任务行以 / 结尾，
+   整块横排一行显示（行尾 / 隐藏）；想断开就插入空行
+   - 数据层完全标准：Tasks / Dataview / 一切统计原生识别
    - 内容可跨行（同一段落内软换行），内部 Markdown 原生渲染
    - 行内代码/代码块中跳过；源码模式不渲染；光标进入露出源码
+   - 横排装饰经 StateField 提供（CM6 禁止 ViewPlugin 提供块级装饰）
    - 对外 API：app.plugins.plugins["inline-todo"].api
    ============================================================ */
 'use strict';
@@ -82,7 +82,9 @@ function scanTodos(text) {
 	return res;
 }
 
-/* ---------- 链（标准任务横排）计算：纯源文行级 ---------- */
+/* ---------- 链（标准任务横排）计算：块级规则 ----------
+   连续非空行 = 一个块；块内只要有任务行以 / 结尾，整块横排。
+   标题/引用/代码块/表格/分隔线/缩进/其他列表项会把块切断。 */
 
 function chainBreakerLine(t) {
 	if (/^\s/.test(t)) return true;                                  // 缩进（子项等）
@@ -97,24 +99,27 @@ function chainBreakerLine(t) {
 
 // 入参 lines 为字符串数组（不含换行符）；行号 1-based
 function computeChainsFromLines(lines) {
-	var chains = [], cur = null, member = {};
-	for (var i = 0; i < lines.length; i++) {
-		var text = lines[i];
-		if (!text.trim() || chainBreakerLine(text)) { cur = null; continue; }
-		var m = text.match(TASK_LINE_RE);
-		var endsSlash = ENDS_SLASH_RE.test(text);
-		if (m) {
-			if (endsSlash) {
-				if (!cur) { cur = []; chains.push(cur); }
-				cur.push(i + 1);
-				member[i + 1] = true;
-			} else {
-				cur = null; // 无斜杠任务行：不吸收，结束链
-			}
-		} else if (cur) {
-			cur.push(i + 1); // 普通文字行：被动吸收
-			member[i + 1] = true;
+	var chains = [], member = {};
+	var i = 0;
+	while (i < lines.length) {
+		if (!lines[i].trim() || chainBreakerLine(lines[i])) { i++; continue; }
+		// 收集一个连续非空、无断链行的块
+		var block = [], hasSlash = false, j = i;
+		while (j < lines.length && lines[j].trim() && !chainBreakerLine(lines[j])) {
+			if (ENDS_SLASH_RE.test(lines[j])) hasSlash = true;
+			block.push(j + 1);
+			j++;
 		}
+		// 块内至少有一个任务行（保证触发语义在任务上）
+		var hasTask = false;
+		for (var k = 0; k < block.length; k++) {
+			if (TASK_LINE_RE.test(lines[block[k] - 1])) { hasTask = true; break; }
+		}
+		if (hasSlash && hasTask) {
+			chains.push(block);
+			for (var k2 = 0; k2 < block.length; k2++) member[block[k2]] = true;
+		}
+		i = j;
 	}
 	return { chains: chains, member: member };
 }
@@ -209,22 +214,19 @@ var ChainWidget = class extends cmView.WidgetType {
 	ignoreEvent() { return true; }
 };
 
-function buildDecosEntry(view, plugin) {
-	if (isSourceMode(view)) return cmView.Decoration.none;
-	var out = [];
-	var doc = view.state.doc;
-
-	// ---- 标准任务横排链 → 块级替换 ----
+// StateField：横排链的块级装饰（CM6 要求块级装饰必须直接提供，不能走 ViewPlugin）
+function buildChainDecos(state, plugin) {
+	var doc = state.doc;
 	var chain = computeChains(doc);
-
+	var out = [];
 	for (var ci = 0; ci < chain.chains.length; ci++) {
 		var ls = chain.chains[ci];
 		var from = doc.line(ls[0]).from;
 		var to = doc.line(ls[ls.length - 1]).to;
-		if (inCode(view.state, from)) continue;
+		if (inCode(state, from)) continue;
 
 		// 光标在链内 → 显示原始源码
-		var sel = view.state.selection, inside = false;
+		var sel = state.selection, inside = false;
 		for (var ri = 0; ri < sel.ranges.length; ri++) {
 			var h = sel.ranges[ri].head, an = sel.ranges[ri].anchor;
 			if ((h >= from && h <= to + 1) || (an >= from && an <= to + 1)) { inside = true; break; }
@@ -249,10 +251,16 @@ function buildDecosEntry(view, plugin) {
 				sig.push('t');
 			}
 		}
-		out.push({ f: from, t: to, k: 'c', rows: rows, sig: sig.join('|') });
+		out.push(cmView.Decoration.replace({ block: true, widget: new ChainWidget(rows, sig.join('|'), plugin) }).range(from, to));
 	}
+	return cmView.Decoration.set(out, true);
+}
 
-	// ---- 行内 []x/ 待办 ----
+// ViewPlugin：行内 []x/ 待办（仅行内装饰，视口内）
+function buildInlineDecos(view, plugin) {
+	var out = [];
+	var doc = view.state.doc;
+	var chain = computeChains(doc);
 	var visible = view.visibleRanges;
 	for (var r = 0; r < visible.length; r++) {
 		var range = visible[r];
@@ -264,7 +272,7 @@ function buildDecosEntry(view, plugin) {
 			var s = range.from + m.index;
 			var checked2 = m[1] !== '';
 			if (inCode(view.state, s) || inTaskMarker(view.state, s)) continue;
-			if (chain.member[doc.lineAt(s).number]) continue; // 链内行由块级装饰接管
+			if (chain.member[doc.lineAt(s).number]) continue; // 链内行由 StateField 块级装饰接管
 			var contentStart = s + tok.length;
 			var searchEnd = Math.min(range.to, contentStart + 4000);
 			var after = view.state.sliceDoc(contentStart, searchEnd);
@@ -305,14 +313,12 @@ function buildDecosEntry(view, plugin) {
 			re.lastIndex = m.index + tok.length + endRel + 1;
 		}
 	}
-
 	out.sort(function (a, b) { return a.f - b.f || a.t - b.t; });
 	var builder = new cmState.RangeSetBuilder();
 	for (var i = 0; i < out.length; i++) {
 		var d = out[i];
 		if (d.k === 'w') builder.add(d.f, d.t, cmView.Decoration.replace({ widget: d.w }));
 		else if (d.k === 'h') builder.add(d.f, d.t, cmView.Decoration.replace({}));
-		else if (d.k === 'c') builder.add(d.f, d.t, cmView.Decoration.replace({ block: true, widget: new ChainWidget(d.rows, d.sig, plugin) }));
 		else builder.add(d.f, d.t, cmView.Decoration.mark({ class: 'itd-done' }));
 	}
 	return builder.finish();
@@ -514,11 +520,21 @@ var InlineTodoPlugin = class extends obsidian.Plugin {
 		var self = this;
 
 		this.api = {
-			version: '0.4.0',
+			version: '0.4.1',
 			getTodos: function (path) { return self._getTodos(path); },
 			getAll: function () { return self._getAllTodos(); },
 			onChanged: function (cb) { return self.app.workspace.on('inline-todo:changed', cb); }
 		};
+
+		// 横排链的块级装饰：必须经 StateField 直接提供（CM6 禁止 ViewPlugin 提供块级装饰）
+		var chainField = cmState.StateField.define({
+			create: function (state) { return buildChainDecos(state, self); },
+			update: function (value, tr) {
+				if (tr.docChanged || tr.selection) return buildChainDecos(tr.state, self);
+				return value;
+			},
+			provide: function (f) { return cmView.EditorView.decorations.from(f); }
+		});
 
 		this.registerMarkdownPostProcessor(function (el, ctx) {
 			if (!(el instanceof HTMLElement)) return;
@@ -539,9 +555,10 @@ var InlineTodoPlugin = class extends obsidian.Plugin {
 			}
 		});
 		this.registerEditorExtension([
+			chainField,
 			cmView.ViewPlugin.fromClass(class {
-				constructor(view) { this.decorations = buildDecosEntry(view, self); }
-				update(u) { this.decorations = buildDecosEntry(u.view, self); }
+				constructor(view) { this.decorations = buildInlineDecos(view, self); }
+				update(u) { this.decorations = buildInlineDecos(u.view, self); }
 			}, {
 				decorations: function (v) { return v.decorations; }
 			})
