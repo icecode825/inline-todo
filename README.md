@@ -31,6 +31,20 @@ until the slash/ and normal text continues here.
 | `[x]text/` | checked inline todo (strikethrough) |
 | `\/` inside content | literal `/` |
 | (single line break inside) | keeps the todo open (same paragraph only) |
+| standard task line ending with `/` (e.g. `- [ ] buy milk/`) | no line break after it — consecutive tasks display in one row |
+
+### Standard tasks, inline display
+
+Keep writing normal Obsidian tasks — they stay 100% visible to Tasks, Dataview and every statistics plugin. Add a trailing `/` to a task line and it joins the next line into a single visual row (the `/` is hidden by this plugin's rendering only):
+
+```markdown
+- [ ] buy milk/
+- [ ] wash dishes/
+- [x] weekly report/
+- [ ] backup data
+```
+
+`buy milk`, `wash dishes` and `weekly report` render as one row; `backup data` (no trailing `/`) stays on its own line. Plain text lines between tasks are absorbed into the row; blank lines, headings, quotes, code blocks and other list items break the chain.
 
 ## Install
 
@@ -89,6 +103,20 @@ dv.table(['note', 'open', 'done'], rows.map(r => [r.note, r.open, r.done]));
 | `[x]内容/` | 已完成待办（内容自动划删除线） |
 | 内容里的 `\/` | 字面斜杠 `/` |
 | 段落内换行 | 待办继续，跨段落不行 |
+| 标准任务行尾加 `/`（如 `- [ ] 买菜/`） | 该行不换行，与下一行拼成一行显示 |
+
+### 标准任务横排（推荐，统计全兼容）
+
+照常写 Obsidian 原生任务，源文件 100% 标准，**Tasks、Dataview、一切统计插件完整识别**。给任务行尾加 `/`，连续的任务就在一行内并排显示（`/` 只在本插件渲染时隐藏）：
+
+```markdown
+- [ ] 买菜/
+- [ ] 洗碗/
+- [x] 写周报/
+- [ ] 备份数据
+```
+
+`买菜`、`洗碗`、`写周报` 横排一行；`备份数据`（行尾没有 `/`）保持竖排。任务之间夹的普通文字行也会被吸进横排；空行、标题、引用、代码块、其他列表会断开横排链。
 
 ### 行为说明
 

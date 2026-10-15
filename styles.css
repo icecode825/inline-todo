@@ -21,3 +21,40 @@ span.itd-content {
   text-decoration: line-through;
   opacity: 0.6;
 }
+
+/* ===== 标准任务横排（行尾 / 拼行）===== */
+
+/* 编辑器里的横排链 */
+.itd-chain-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 14px;
+}
+
+/* 阅读模式：链成员块横向流动 */
+.markdown-preview-view p.itd-run,
+.markdown-rendered p.itd-run {
+  display: inline;
+  margin: 0 !important;
+}
+
+.markdown-preview-view ul.itd-run,
+.markdown-rendered ul.itd-run {
+  display: inline-block;
+  padding-left: 0 !important;
+  margin: 0 !important;
+}
+
+.markdown-preview-view ul.itd-run > li,
+.markdown-rendered ul.itd-run > li {
+  display: inline-block;
+  list-style: none;
+  margin: 0 16px 4px 0;
+  padding: 0;
+}
+
+.markdown-preview-view ul.itd-run > li::before,
+.markdown-rendered ul.itd-run > li::before {
+  content: none;
+}
