@@ -1,0 +1,23 @@
+/* ===== 行内待办 Inline Todo ===== */
+
+/* 复选框：阅读模式与编辑器共用 */
+input.itd-box {
+  width: 15px;
+  height: 15px;
+  margin: 0 5px 0 1px;
+  vertical-align: -2px;
+  cursor: pointer;
+  accent-color: var(--interactive-accent);
+  flex-shrink: 0;
+}
+
+/* 待办内容包裹层（保持行内排版） */
+span.itd-content {
+  /* 无需额外样式，仅为钩子保留 */
+}
+
+/* 完成态：删除线 + 降透明度 */
+.itd-done {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
