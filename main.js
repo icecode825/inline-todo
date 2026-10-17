@@ -1,5 +1,5 @@
 /* ============================================================
-   行内待办 Inline Todo  v0.4.2
+   行内待办 Inline Todo  v0.4.3
    语法一（正文随手待办）：[]内容/ 未完成，[x]内容/ 已完成
    语法二（标准任务横排）：连续非空行块中任意任务行以 / 结尾，
    整块横排一行显示（行尾 / 隐藏）；想断开就插入空行
@@ -7,7 +7,6 @@
    - 内容可跨行（同一段落内软换行），内部 Markdown 原生渲染
    - 行内代码/代码块中跳过；源码模式不渲染；光标进入露出源码
    - 横排装饰经 StateField 提供（CM6 禁止 ViewPlugin 提供块级装饰）
-   - 对外 API：app.plugins.plugins["inline-todo"].api
    ============================================================ */
 'use strict';
 
@@ -171,7 +170,6 @@ var CheckboxWidget = class extends cmView.WidgetType {
 			});
 			if (this.plugin) {
 				var mv = this.plugin.app.workspace.getActiveViewOfType(obsidian.MarkdownView);
-				this.plugin._emitChanged(mv && mv.file ? mv.file.path : null);
 			}
 		}.bind(this));
 		return box;
@@ -219,7 +217,6 @@ var ChainWidget = class extends cmView.WidgetType {
 				view.dispatch({ selection: { anchor: r.lineFrom } });
 				if (self.plugin) {
 					var mv = self.plugin.app.workspace.getActiveViewOfType(obsidian.MarkdownView);
-					self.plugin._emitChanged(mv && mv.file ? mv.file.path : null);
 				}
 			}
 			if (r.isTask) {
@@ -236,7 +233,6 @@ var ChainWidget = class extends cmView.WidgetType {
 					});
 					if (self.plugin) {
 						var mv = self.plugin.app.workspace.getActiveViewOfType(obsidian.MarkdownView);
-						self.plugin._emitChanged(mv && mv.file ? mv.file.path : null);
 					}
 				});
 				wrap.appendChild(box);
@@ -672,13 +668,11 @@ async function handleToggle(plugin, box, ctx) {
 			var span = box.nextElementSibling;
 			while (span && !(span.classList && span.classList.contains('itd-content'))) span = span.nextElementSibling;
 			if (span) span.classList.toggle('itd-done', box.checked);
-			plugin._emitChanged(sourcePath);
 		} else {
 			var src = await plugin.app.vault.read(file);
 			var newSrc = src.slice(0, hit.index) + newTok + src.slice(hit.index + tokLen);
 			await plugin.app.vault.modify(file, newSrc);
 			if (view && view.previewMode) view.previewMode.rerender(true);
-			plugin._emitChanged(sourcePath);
 		}
 	} catch (err) {
 		console.error('[inline-todo] 勾选回写失败:', err);
@@ -702,13 +696,6 @@ function domOccurrenceIndex(box) {
 var InlineTodoPlugin = class extends obsidian.Plugin {
 	async onload() {
 		var self = this;
-
-		this.api = {
-			version: '0.4.2',
-			getTodos: function (path) { return self._getTodos(path); },
-			getAll: function () { return self._getAllTodos(); },
-			onChanged: function (cb) { return self.app.workspace.on('inline-todo:changed', cb); }
-		};
 
 		// 横排链的块级装饰：必须经 StateField 直接提供（CM6 禁止 ViewPlugin 提供块级装饰）
 		var chainField = cmState.StateField.define({
@@ -799,30 +786,6 @@ var InlineTodoPlugin = class extends obsidian.Plugin {
 		}, 800);
 	}
 
-
-	_emitChanged(path) {
-		try { this.app.workspace.trigger('inline-todo:changed', path || null); } catch (e) { /* ignore */ }
-	}
-
-	async _getTodos(path) {
-		var file = this.app.vault.getAbstractFileByPath(path);
-		if (!file || !this.app.vault.cachedRead) return [];
-		var text = await this.app.vault.cachedRead(file);
-		return scanTodos(text);
-	}
-
-	async _getAllTodos() {
-		var out = {};
-		var files = this.app.vault.getMarkdownFiles();
-		for (var i = 0; i < files.length; i++) {
-			try {
-				var text = await this.app.vault.cachedRead(files[i]);
-				var todos = scanTodos(text);
-				if (todos.length) out[files[i].path] = todos;
-			} catch (e) { /* 跳过读取失败的文件 */ }
-		}
-		return out;
-	}
 
 	// 标准任务横排：给链成员的 ul / p 加显示类（数据不动，纯显示层）
 	// 源文件链缓存（阅读模式用，按路径+长度失效）

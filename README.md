@@ -23,7 +23,6 @@ until the slash/ and normal text continues here.
 - **Escaping**: a literal slash inside the content is written as `\/`.
 - **Enter keeps the flow going**: with the cursor at the end of a todo line (`[]text/`), pressing Enter appends a fresh `[]/` right after it and puts the cursor in the middle — write a whole row of todos without stopping. On an empty `[]/` Enter behaves like a normal newline.
 - **Blank-line rule when tasks are displayed inline**: a todo row only affects its immediate upper/lower line — a plain-text line joins the row, and a blank line is swallowed (N blank lines render as N−1). This applies in both Live Preview and Reading view.
-- **JS API** for other plugins and statistics scripts (see below).
 
 ## Syntax
 
@@ -60,38 +59,6 @@ Search **Inline Todo** in **Settings → Community plugins → Browse**. If it i
 
 ### Manual
 Download `main.js`, `manifest.json` and `styles.css` from the [latest release](../../releases/latest) into `<vault>/.obsidian/plugins/inline-todo/`, then enable it in Settings → Community plugins.
-
-## For developers / statistics
-
-The plugin exposes a public API so other plugins and scripts can read inline todos (they are **not** list items, so the Tasks plugin / Dataview task lists will not see them — use this API instead):
-
-```js
-const api = app.plugins.plugins['inline-todo']?.api;
-
-// All inline todos of one note (in document order)
-const todos = await api.getTodos('notes/today.md');
-// [{ checked: false, text: 'milk', raw: '[]milk /', index: 12, line: 3, column: 4 }, ...]
-
-// Scan the whole vault: { 'path/to/note.md': [todos...] }
-const all = await api.getAll();
-
-// Subscribe to toggles (callback receives the file path)
-const ref = api.onChanged((path) => console.log('changed:', path));
-// app.workspace.offref(ref) to unsubscribe
-```
-
-DataviewJS example — count open inline todos per note:
-
-```dataviewjs
-const api = app.plugins.plugins['inline-todo']?.api;
-const all = await api.getAll();
-const rows = Object.entries(all).map(([path, todos]) => ({
-  note: path,
-  open: todos.filter(t => !t.checked).length,
-  done: todos.filter(t => t.checked).length,
-}));
-dv.table(['note', 'open', 'done'], rows.map(r => [r.note, r.open, r.done]));
-```
 
 ## 中文说明
 
@@ -143,22 +110,6 @@ dv.table(['note', 'open', 'done'], rows.map(r => [r.note, r.open, r.done]));
 - **社区插件**：设置 → 第三方插件 → 浏览，搜索 **Inline Todo**（若还未出现在列表里，用下面两种方式）
 - **BRAT**：安装 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 后，在 BRAT 里「Add Beta plugin」输入 `icecode825/inline-todo`
 - **手动**：从 [最新 Release](../../releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，放进 `<库文件夹>/.obsidian/plugins/inline-todo/`，再到 设置 → 第三方插件 里启用
-
-### 给插件开发者 / 统计脚本
-
-行内待办**不是列表任务**，所以 Tasks、Dataview 的任务列表默认看不到它们。本插件提供公开 API：
-
-```js
-const api = app.plugins.plugins['inline-todo']?.api;
-
-await api.getTodos('笔记.md');  // 该笔记全部行内待办
-await api.getAll();             // 全库扫描 { 路径: 待办数组 }
-api.onChanged(path => { ... }); // 监听勾选变化
-```
-
-每个待办对象包含：`checked`（是否完成）、`text`（内容，已还原转义）、`index`（源文偏移）、`line` / `column`（行/列，从 0 计）。
-
-DataviewJS 统计示例见上文 English 部分。
 
 ## License
 

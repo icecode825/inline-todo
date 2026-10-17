@@ -1,9 +1,9 @@
 {
 	"id": "inline-todo",
 	"name": "Inline Todo",
-	"version": "0.4.2",
+	"version": "0.4.3",
 	"minAppVersion": "0.15.0",
-	"description": "Checkable todos anywhere in a line: []text/ and [x]text/. Multi-line content, native Markdown inside, click to toggle. Standard tasks ending with / display inline. JS API included.",
+	"description": "Checkable todos anywhere in a line: []text/ and [x]text/. Multi-line content, native Markdown inside, click to toggle. Standard tasks ending with / display inline on one row.",
 	"author": "icecode825",
 	"authorUrl": "https://github.com/icecode825",
 	"isDesktopOnly": false
