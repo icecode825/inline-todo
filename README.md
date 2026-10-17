@@ -21,6 +21,8 @@ until the slash/ and normal text continues here.
 - **Cursor reveals source**: place the cursor inside a todo in Live Preview and it shows the raw `[]text/` so you can edit it, like native Markdown syntax does.
 - **Safe by default**: markers inside inline code / code blocks are ignored. Source mode always shows raw text. An unmatched `[]` or `/` never renders.
 - **Escaping**: a literal slash inside the content is written as `\/`.
+- **Enter keeps the flow going**: with the cursor at the end of a todo line (`[]text/`), pressing Enter appends a fresh `[]/` right after it and puts the cursor in the middle — write a whole row of todos without stopping. On an empty `[]/` Enter behaves like a normal newline.
+- **Blank-line rule when tasks are displayed inline**: a todo row only affects its immediate upper/lower line — a plain-text line joins the row, and a blank line is swallowed (N blank lines render as N−1). This applies in both Live Preview and Reading view.
 - **JS API** for other plugins and statistics scripts (see below).
 
 ## Syntax
@@ -48,8 +50,16 @@ Keep writing normal Obsidian tasks — they stay 100% visible to Tasks, Dataview
 
 ## Install
 
-- Community plugins: search **Inline Todo** (pending review).
-- Manual: download `main.js`, `manifest.json`, `styles.css` from the [latest release](../../releases/latest) into `<vault>/.obsidian/plugins/inline-todo/` and enable it.
+### Community plugins
+Search **Inline Todo** in **Settings → Community plugins → Browse**. If it is not listed yet, use one of the options below.
+
+### BRAT (beta)
+1. Install [BRAT](https://github.com/TfTHacker/obsidian42-brat) from the community plugins.
+2. In BRAT choose **Add Beta plugin** and enter `icecode825/inline-todo`.
+3. Enable **Inline Todo** in Settings → Community plugins.
+
+### Manual
+Download `main.js`, `manifest.json` and `styles.css` from the [latest release](../../releases/latest) into `<vault>/.obsidian/plugins/inline-todo/`, then enable it in Settings → Community plugins.
 
 ## For developers / statistics
 
@@ -122,9 +132,17 @@ dv.table(['note', 'open', 'done'], rows.map(r => [r.note, r.open, r.done]));
 
 - **实时预览**与**阅读模式**都渲染，点击复选框直接写回源文件（`[]` ↔ `[x]`）
 - **光标进入待办范围**（实时预览）时自动露出原始语法，方便编辑
+- **回车连着写**：光标停在 `[]文字/` 行尾按回车，会紧接着生成一个空的 `[]/` 并把光标放在中间，可以一路写下去；空的 `[]/` 上按回车就是普通换行
+- **横排时的空行规则**：待办只影响紧邻的上一行/下一行——相邻行是文字就并进同一行，是空行就把这个空行吃掉（N 个空行显示 N-1 个）。实时预览与阅读模式表现一致
 - **源码模式**始终显示原始语法
 - 行内代码、代码块中的标记**不会误渲染**；没有结束符的 `[]` 也不会
 - 待办内部的**加粗、斜体、高亮、链接等一切语法**都按 Obsidian 原生规则渲染，插件只负责待办框和完成样式
+
+### 安装
+
+- **社区插件**：设置 → 第三方插件 → 浏览，搜索 **Inline Todo**（若还未出现在列表里，用下面两种方式）
+- **BRAT**：安装 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 后，在 BRAT 里「Add Beta plugin」输入 `icecode825/inline-todo`
+- **手动**：从 [最新 Release](../../releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，放进 `<库文件夹>/.obsidian/plugins/inline-todo/`，再到 设置 → 第三方插件 里启用
 
 ### 给插件开发者 / 统计脚本
 

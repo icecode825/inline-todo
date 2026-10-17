@@ -11,11 +11,6 @@ input.itd-box {
   flex-shrink: 0;
 }
 
-/* 待办内容包裹层（保持行内排版） */
-span.itd-content {
-  /* 无需额外样式，仅为钩子保留 */
-}
-
 /* 完成态：删除线 + 降透明度 */
 .itd-done {
   text-decoration: line-through;
@@ -32,29 +27,96 @@ span.itd-content {
   gap: 2px 14px;
 }
 
-/* 阅读模式：链成员块横向流动 */
-.markdown-preview-view p.itd-run,
+/* ===== 阅读模式横排（纯 CSS 流式方案，不移动任何 DOM 节点）=====
+   结构：sizer > div.el-p / div.el-ul（插件加 .itd-run-wrap）> p / ul。
+   包裹层与内部块全部行内化 → 同一链的相邻包裹层自然流动到同一行；
+   链间换行/空行由后链 ::before 的 --itd-break 换行符承担（空段减一规则）。 */
 .markdown-rendered p.itd-run {
   display: inline;
   margin: 0 !important;
 }
 
-.markdown-preview-view ul.itd-run,
-.markdown-rendered ul.itd-run {
-  display: inline-block;
+.markdown-rendered div.itd-run-wrap {
+  display: inline;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.markdown-rendered ul.itd-run,
+.markdown-rendered div.itd-run-wrap ul.itd-run {
+  display: inline;
   padding-left: 0 !important;
   margin: 0 !important;
 }
 
-.markdown-preview-view ul.itd-run > li,
-.markdown-rendered ul.itd-run > li {
-  display: inline-block;
+.markdown-rendered ul.itd-run > li,
+.markdown-rendered div.itd-run-wrap ul.itd-run > li {
+  display: inline;
   list-style: none;
-  margin: 0 16px 4px 0;
+  /* 间距交给 HTML 里的空白字符（与行内待办 []甲/[]乙/ 之间只有一个空格一致） */
+  margin: 0;
   padding: 0;
 }
 
-.markdown-preview-view ul.itd-run > li::before,
-.markdown-rendered ul.itd-run > li::before {
+/* 列表项内部的段落（懒续行文字）也排进同一行 */
+.markdown-rendered ul.itd-run li > p,
+.markdown-rendered div.itd-run-wrap ul.itd-run li > p {
+  display: inline;
+  margin: 0 !important;
+  padding: 0;
+}
+
+.markdown-rendered ul.itd-run > li:not(.itd-run-start)::before,
+.markdown-rendered div.itd-run-wrap ul.itd-run > li:not(.itd-run-start)::before {
   content: none;
+}
+
+/* 阅读模式横排成员：隐藏列表圆点、复选框对齐（与行内待办的 itd-box 完全一致） */
+.markdown-rendered ul.itd-run .list-bullet {
+  display: none !important;
+}
+.markdown-rendered ul.itd-run li.task-list-item .task-list-item-checkbox {
+  width: 15px !important;
+  height: 15px !important;
+  margin: 0 5px 0 1px !important;
+  /* 不能设 static：Obsidian 的对号是 ::after 绝对定位 + mask 绘制的，需要定位上下文 */
+  position: relative !important;
+  /* 行内待办在 block 段落里相对段落顶是 5px；横排 li 是 inline 段落，用 -1px 对齐到同样的 5px */
+  vertical-align: -1px !important;
+  flex-shrink: 0;
+}
+.markdown-rendered ul.itd-run li.task-list-item {
+  margin-inline-start: 0 !important;
+  padding-inline-start: 0 !important;
+  text-indent: 0 !important;
+}
+.markdown-rendered ul.itd-run {
+  padding-inline-start: 0 !important;
+  margin-inline-start: 0 !important;
+}
+
+/* 链内成员块自身不产生段落间距（链与外块的间距由插件的 normalizeChainGaps 控制） */
+.markdown-rendered .itd-run-wrap > :is(p, ul) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* 横排成员内的软换行 <br> 隐藏（懒续行文字并入同一行，与实时预览一致） */
+.markdown-rendered .itd-run br,
+.markdown-rendered .itd-run-wrap br {
+  display: none !important;
+}
+
+/* 链间衔接：前链末块(.itd-run-end) + 后链首块(.itd-run-start) → 后链 ::before 生成换行符。
+   --itd-break 含 N 个 \A（N = 源空行数）→ 显示 N-1 个空行；默认 "\A" 仅换行不空行 */
+.markdown-rendered .itd-run-end + .itd-run-start::before {
+  content: var(--itd-break, "\A") !important;
+  white-space: pre-line !important;
+}
+
+/* li 级链起始：Obsidian 阅读渲染不会因空行拆开列表，多条链可能同处一个 ul，
+   链边界前后隔着别的 li（前邻不一定是 end）→ 只要不是首个子项就无条件插入换行符 */
+.markdown-rendered ul.itd-run > li.itd-run-start:not(:first-child)::before {
+  content: var(--itd-break, "\A") !important;
+  white-space: pre-line !important;
 }
